@@ -118,21 +118,21 @@
                     status.innerText = "Descargando en el servidor...";
                 }
                 
-                if (data.finalizado) {
-                    status.innerText = "✅ ¡Preparando tu descarga!";
+                                if (data.finalizado) {
+                    status.innerText = "✅ ¡Descarga lista! Iniciando transferencia...";
                     pBar.style.width = "100%";
                     pText.innerText = "100%";
                     eventSource.close();
                     
-                    // ESTO DISPARA LA DESCARGA HACIA TU CELULAR
+                    // Esto hace que el navegador descargue el archivo automáticamente
                     window.location.href = `/get_file?nombre=${encodeURIComponent(data.archivo)}&ruta=${encodeURIComponent(data.ruta)}`;
                     
                     setTimeout(() => {
-                        status.innerText = "✅ ¡Archivo enviado!";
                         urlInput.value = ""; 
-                    }, 2000);
+                        status.innerText = "✅ ¡Archivo enviado con éxito!";
+                    }, 3000);
                 }
-// ... resto del código igual
+
 
     </script>
 </body>
