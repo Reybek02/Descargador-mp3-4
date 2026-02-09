@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Descargador Pro</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #1e1e1e;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            text-align: center;
+            width: 90%;
+            max-width: 400px;
+        }
+        h1 { color: #1DB954; margin-bottom: 5px; }
+        p { color: #aaa; font-size: 14px; }
+        
+        input {
+            width: 100%;
+            padding: 12px;
+            margin: 1.5rem 0;
+            border-radius: 8px;
+            border: 2px solid #333;
+            background-color: #252525;
+            color: white;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input:focus { border-color: #1DB954; }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            background-color: #1DB954;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        button.video { background-color: #FF0000; }
+        button:active { transform: scale(0.98); }
+        
+        #progress-container {
+            display: none;
+            margin-top: 25px;
+            text-align: center;
+        }
+        .progress-bg {
+            width: 100%;
+            background-color: #333;
+            border-radius: 10px;
+            height: 12px;
+            overflow: hidden;
+        }
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background-color: #1DB954;
+            transition: width 0.3s ease;
+        }
+        #percent-text {
+            margin-top: 8px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        #status {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #1DB954;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Downloader Pro</h1>
+        <p>Introduce el link de la canción o playlist</p>
+        
+        <input type="text" id="url" placeholder="Pega el link de YouTube aquí...">
+        
+        <button onclick="descargar('mp3')">Descargar Música (MP3)</button>
+        <button class="video" onclick="descargar('mp4')">Descargar Video (MP4)</button>
+        
+        <div id="progress-container">
+            <div class="progress-bg">
+                <div id="progress-bar"></div>
+            </div>
+            <p id="percent-text">0%</p>
+        </div>
+        
+        <div id="status"></div>
+    </div>
+
+    <script>
+        async function descargar(tipo) {
+            const urlInput = document.getElementById('url');
+            const status = document.getElementById('status');
+            const pContainer = document.getElementById('progress-container');
+            const pBar = document.getElementById('progress-bar');
+            const pText = document.getElementById('percent-text');
+            
+            const url = urlInput.value.trim();
+            if (!url) {
+                alert("Por favor, pega un enlace válido.");
+                return;
+            }
+
+            // Reiniciar interfaz
+            status.innerText = "Conectando con el servidor...";
+            pContainer.style.display = "block";
+            pBar.style.width = "0%";
+            pText.innerText = "0%";
+
+            // Usamos EventSource para recibir el flujo de datos del servidor Python
+            const urlServidor = `http://127.0.0.1:5000/descargar?url=${encodeURIComponent(url)}&tipo=${tipo}`;
+            const eventSource = new EventSource(urlServidor);
+
+            eventSource.onmessage = function(event) {
+                const data = JSON.parse(event.data);
+                
+                if (data.progreso) {
+                    const p = data.progreso;
+                    pBar.style.width = p + "%";
+                    pText.innerText = p + "%";
+                    status.innerText = "Descargando archivos...";
+                }
+                
+                if (data.finalizado) {
+                    status.innerText = "✅ ¡Descarga terminada con éxito!";
+                    pBar.style.width = "100%";
+                    pText.innerText = "100%";
+                    eventSource.close();
+                    urlInput.value = ""; // Limpiar input
+                }
+
+                if (data.error) {
+                    status.innerText = "❌ Error: " + data.error;
+                    eventSource.close();
+                }
+            };
+
+            eventSource.onerror = function() {
+                status.innerText = "❌ Error de conexión con Termux.";
+                eventSource.close();
+            };
+        }
+    </script>
+</body>
+</html>
