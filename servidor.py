@@ -1,11 +1,11 @@
 import os, subprocess, json, re, glob
-from flask import Flask, request, Response, send_from_directory
+from flask import Flask, request, Response, send_from_directory, send_file
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-# Carpeta temporal estándar en servidores Linux/Render
+# Carpeta temporal en el servidor de Render
 BASE_FOLDER = "/tmp/downloads"
 
 def obtener_nombre_playlist(enlace):
@@ -16,7 +16,7 @@ def obtener_nombre_playlist(enlace):
     except: 
         return None
 
-# --- ESTA ES LA RUTA QUE FALTABA (Corrige el error "No encontrado") ---
+# --- ESTA RUTA CORRIGE EL ERROR "NO ENCONTRADO" ---
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
@@ -50,22 +50,20 @@ def descargar():
         
         proceso.wait()
         
-        # Limpieza de archivos temporales de imagen
+        # Limpieza de imágenes temporales
         os.system(f'find "{ruta_final}" -name "*.webp" -delete')
         os.system(f'find "{ruta_final}" -name "*.jpg" -delete')
         
-        # Localizar el archivo final para enviarlo al usuario
+        # Identificar el archivo final para mandarlo al celular
         archivos = glob.glob(os.path.join(ruta_final, "*"))
         if archivos:
             ultimo_archivo = max(archivos, key=os.path.getctime)
             nombre_archivo = os.path.basename(ultimo_archivo)
             yield f"data: {json.dumps({'finalizado': True, 'archivo': nombre_archivo, 'ruta': nombre_pl if nombre_pl else ''})}\n\n"
-        else:
-            yield f"data: {json.dumps({'error': 'No se pudo generar el archivo'})}\n\n"
 
     return Response(generar_progreso(), mimetype='text/event-stream')
 
-# --- RUTA PARA ENVIAR EL ARCHIVO AL NAVEGADOR ---
+# --- RUTA PARA QUE EL ARCHIVO BAJE A TU MÓVIL ---
 @app.route('/get_file')
 def get_file():
     nombre = request.args.get('nombre')
