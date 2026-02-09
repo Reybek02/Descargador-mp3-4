@@ -5,6 +5,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+# Carpeta temporal en el servidor de Render
 BASE_FOLDER = "/tmp/downloads"
 
 def obtener_nombre_playlist(enlace):
@@ -15,10 +16,12 @@ def obtener_nombre_playlist(enlace):
     except: 
         return None
 
+# RUTA PARA MOSTRAR TU PÁGINA
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
+# RUTA PARA EL PROCESO DE DESCARGA
 @app.route('/descargar')
 def descargar():
     enlace = request.args.get('url')
@@ -30,7 +33,6 @@ def descargar():
     if not os.path.exists(ruta_final): 
         os.makedirs(ruta_final)
     
-    # Template para el archivo
     template = os.path.join(ruta_final, "%(title)s.%(ext)s")
 
     def generar_progreso():
@@ -49,19 +51,22 @@ def descargar():
         
         proceso.wait()
         
-        # Limpieza
+        # Limpieza de temporales
         os.system(f'find "{ruta_final}" -name "*.webp" -delete')
         os.system(f'find "{ruta_final}" -name "*.jpg" -delete')
         
-        # Buscamos el nombre del archivo real que se creó para enviarlo después
+        # Identificar el archivo final para enviarlo
         archivos = glob.glob(os.path.join(ruta_final, "*"))
-        ultimo_archivo = max(archivos, key=os.path.getctime) if archivos else None
-        nombre_archivo = os.path.basename(ultimo_archivo) if ultimo_archivo else ""
-
-        yield f"data: {json.dumps({'finalizado': True, 'archivo': nombre_archivo, 'ruta': nombre_pl if nombre_pl else ''})}\n\n"
+        if archivos:
+            ultimo_archivo = max(archivos, key=os.path.getctime)
+            nombre_archivo = os.path.basename(ultimo_archivo)
+            yield f"data: {json.dumps({'finalizado': True, 'archivo': nombre_archivo, 'ruta': nombre_pl if nombre_pl else ''})}\n\n"
+        else:
+            yield f"data: {json.dumps({'error': 'No se encontró el archivo'})}\n\n"
 
     return Response(generar_progreso(), mimetype='text/event-stream')
 
+# RUTA PARA ENVIAR EL ARCHIVO AL NAVEGADOR
 @app.route('/get_file')
 def get_file():
     nombre = request.args.get('nombre')
