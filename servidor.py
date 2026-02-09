@@ -1,11 +1,12 @@
-import os, subprocess, json, re
-from flask import Flask, request, Response, send_from_directory
+import os, subprocess, json, re, glob
+from flask import Flask, request, Response, send_from_directory, send_file
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-# 1. FUNCIÓN DE AYUDA
+BASE_FOLDER = "/tmp/downloads"
+
 def obtener_nombre_playlist(enlace):
     try:
         cmd = f'yt-dlp --flat-playlist --print "%(playlist_title)s" "{enlace}" | head -n 1'
@@ -14,28 +15,22 @@ def obtener_nombre_playlist(enlace):
     except: 
         return None
 
-# 2. RUTA PARA MOSTRAR LA PÁGINA (INDEX)
 @app.route('/')
 def index():
-    # Esto busca el archivo index.html en la carpeta principal
     return send_from_directory('.', 'index.html')
 
-# 3. RUTA DE DESCARGA
 @app.route('/descargar')
 def descargar():
     enlace = request.args.get('url')
     tipo = request.args.get('tipo')
     
-    # IMPORTANTE: En Render no existe la carpeta de Termux. 
-    # Usamos /tmp que es la carpeta temporal permitida en la nube.
-    base_folder = "/tmp/downloads"
-
     nombre_pl = obtener_nombre_playlist(enlace)
-    ruta_final = os.path.join(base_folder, nombre_pl) if nombre_pl else base_folder
+    ruta_final = os.path.join(BASE_FOLDER, nombre_pl) if nombre_pl else BASE_FOLDER
     
     if not os.path.exists(ruta_final): 
         os.makedirs(ruta_final)
     
+    # Template para el archivo
     template = os.path.join(ruta_final, "%(title)s.%(ext)s")
 
     def generar_progreso():
@@ -58,11 +53,22 @@ def descargar():
         os.system(f'find "{ruta_final}" -name "*.webp" -delete')
         os.system(f'find "{ruta_final}" -name "*.jpg" -delete')
         
-        yield f"data: {json.dumps({'finalizado': True, 'mensaje': '¡Completado en el servidor!'})}\n\n"
+        # Buscamos el nombre del archivo real que se creó para enviarlo después
+        archivos = glob.glob(os.path.join(ruta_final, "*"))
+        ultimo_archivo = max(archivos, key=os.path.getctime) if archivos else None
+        nombre_archivo = os.path.basename(ultimo_archivo) if ultimo_archivo else ""
+
+        yield f"data: {json.dumps({'finalizado': True, 'archivo': nombre_archivo, 'ruta': nombre_pl if nombre_pl else ''})}\n\n"
 
     return Response(generar_progreso(), mimetype='text/event-stream')
 
-# 4. ARRANQUE DEL SERVIDOR
+@app.route('/get_file')
+def get_file():
+    nombre = request.args.get('nombre')
+    subcarpeta = request.args.get('ruta')
+    directorio = os.path.join(BASE_FOLDER, subcarpeta) if subcarpeta else BASE_FOLDER
+    return send_from_directory(directorio, nombre, as_attachment=True)
+
 if __name__ == '__main__':
     puerto = int(os.environ.get("PORT", 5000))
     app.run(host='0.0.0.0', port=puerto)
