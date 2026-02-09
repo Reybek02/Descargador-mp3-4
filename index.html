@@ -128,7 +128,8 @@
             pText.innerText = "0%";
 
             // Usamos EventSource para recibir el flujo de datos del servidor Python
-            const urlServidor = `http://127.0.0.1:5000/descargar?url=${encodeURIComponent(url)}&tipo=${tipo}`;
+            const urlServidor = `/descargar?url=${encodeURIComponent(url)}&tipo=${tipo}`;
+
             const eventSource = new EventSource(urlServidor);
 
             eventSource.onmessage = function(event) {
