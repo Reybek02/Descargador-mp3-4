@@ -108,30 +108,6 @@
     </div>
 
     <script>
-        async function descargar(tipo) {
-            const urlInput = document.getElementById('url');
-            const status = document.getElementById('status');
-            const pContainer = document.getElementById('progress-container');
-            const pBar = document.getElementById('progress-bar');
-            const pText = document.getElementById('percent-text');
-            
-            const url = urlInput.value.trim();
-            if (!url) {
-                alert("Por favor, pega un enlace válido.");
-                return;
-            }
-
-            // Reiniciar interfaz
-            status.innerText = "Conectando con el servidor...";
-            pContainer.style.display = "block";
-            pBar.style.width = "0%";
-            pText.innerText = "0%";
-
-            // Usamos EventSource para recibir el flujo de datos del servidor Python
-            const urlServidor = `/descargar?url=${encodeURIComponent(url)}&tipo=${tipo}`;
-
-            const eventSource = new EventSource(urlServidor);
-
             eventSource.onmessage = function(event) {
                 const data = JSON.parse(event.data);
                 
@@ -139,28 +115,25 @@
                     const p = data.progreso;
                     pBar.style.width = p + "%";
                     pText.innerText = p + "%";
-                    status.innerText = "Descargando archivos...";
+                    status.innerText = "Descargando en el servidor...";
                 }
                 
                 if (data.finalizado) {
-                    status.innerText = "✅ ¡Descarga terminada con éxito!";
+                    status.innerText = "✅ ¡Preparando tu descarga!";
                     pBar.style.width = "100%";
                     pText.innerText = "100%";
                     eventSource.close();
-                    urlInput.value = ""; // Limpiar input
+                    
+                    // ESTO DISPARA LA DESCARGA HACIA TU CELULAR
+                    window.location.href = `/get_file?nombre=${encodeURIComponent(data.archivo)}&ruta=${encodeURIComponent(data.ruta)}`;
+                    
+                    setTimeout(() => {
+                        status.innerText = "✅ ¡Archivo enviado!";
+                        urlInput.value = ""; 
+                    }, 2000);
                 }
+// ... resto del código igual
 
-                if (data.error) {
-                    status.innerText = "❌ Error: " + data.error;
-                    eventSource.close();
-                }
-            };
-
-            eventSource.onerror = function() {
-                status.innerText = "❌ Error de conexión con Termux.";
-                eventSource.close();
-            };
-        }
     </script>
 </body>
 </html>
